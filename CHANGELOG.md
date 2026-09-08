@@ -1,5 +1,30 @@
 <hr>
 
+# v0.6.0 (2026-09-08)
+
+## What's Changed
+
+* Update compatibility with cilium/ebpf v0.22.0.
+* Replace deprecated `CollectionSpec.RewriteConstants` and `RewriteMaps` usage with `VariableSpecs` and
+  `MapReplacements` to match the current eBPF library API.
+* Upgrade Go toolchain and core dependencies (`cilium/ebpf`, `florianl/go-tc`, `logrus`, `x/sys`, etc.) for current
+  compatibility and maintenance.
+
+**Full Changelog**: https://github.com/gojue/ebpfmanager/compare/v0.5.0...v0.6.0
+
+<hr>
+
+# v0.5.0 (2025-03-19)
+
+## What's Changed
+
+* support debugfs and tracefs by @cfc4n in https://github.com/gojue/ebpfmanager/pull/48
+* Update dependencies by @cfc4n in https://github.com/gojue/ebpfmanager/pull/50
+
+**Full Changelog**: https://github.com/gojue/ebpfmanager/compare/v0.4.6...v0.5.0
+
+<hr>
+
 # v0.4.5 (2024-02-02)
 ## What's Changed
 
