@@ -1224,11 +1224,28 @@ func (m *Manager) editConstants() error {
 	// Start with the BTF based solution
 	rodata := m.collectionSpec.Maps[".rodata"]
 	if rodata != nil && rodata.Key != nil && rodata.Value != nil {
-		consts := map[string]interface{}{}
+		// The previous API provided CollectionSpec.RewriteConstants. That was removed
+		// in newer ebpf versions. Emulate the behavior by setting the corresponding
+		// VariableSpecs in the CollectionSpec. Honor FailOnMissing per editor.
 		for _, editor := range m.options.ConstantEditors {
-			consts[editor.Name] = editor.Value
+			if m.collectionSpec.Variables == nil {
+				if editor.FailOnMissing {
+					return fmt.Errorf("constant %s not found", editor.Name)
+				}
+				continue
+			}
+			vspec, ok := m.collectionSpec.Variables[editor.Name]
+			if !ok {
+				if editor.FailOnMissing {
+					return fmt.Errorf("constant %s not found", editor.Name)
+				}
+				continue
+			}
+			if err := vspec.Set(editor.Value); err != nil {
+				return fmt.Errorf("error:%v , couldn't set constant %s", err, editor.Name)
+			}
 		}
-		return m.collectionSpec.RewriteConstants(consts)
+		return nil
 	}
 
 	// Fall back to the old school constant edition
@@ -1324,17 +1341,20 @@ func (m *Manager) rewriteMaps(program *ebpf.ProgramSpec, eBPFMaps map[string]*eb
 	return nil
 }
 
-// editMaps - RewriteMaps replaces all references to specific maps.
+// editMaps - Replace map specs so provided maps are used when loading the Collection.
 func (m *Manager) editMaps(maps map[string]*ebpf.Map) error {
-	// Rewrite maps
-	if err := m.collectionSpec.RewriteMaps(maps); err != nil {
-		return err
+	// Use CollectionOptions.MapReplacements to instruct the loader to use these
+	// existing maps instead of creating new ones when loading the Collection.
+	if m.options.VerifierOptions.MapReplacements == nil {
+		m.options.VerifierOptions.MapReplacements = make(map[string]*ebpf.Map)
+	}
+	for name, mp := range maps {
+		m.options.VerifierOptions.MapReplacements[name] = mp
 	}
 
-	// The rewrite operation removed the original maps from the CollectionSpec and will therefore not appear in the
-	// Collection, make the mapping with the Manager.Maps now
-	found := false
+	// Mark manager maps / perf maps as external/edited and keep references
 	for name, rwMap := range maps {
+		found := false
 		for _, managerMap := range m.Maps {
 			if managerMap.Name == name {
 				managerMap.array = rwMap
